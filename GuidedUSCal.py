@@ -327,10 +327,10 @@ class GuidedUSCalWidget(ScriptedLoadableModuleWidget):
     # Creates a connector Node
     if self.connectorNode is None:
       if self.connectCheck == 1: 
-        if self.imageSelector.currentNode() or self.TransformSelector.currentNode() is None: 
-          if self.imageSelector.currentNode() is None: 
+        if self.imageNode or self.transformNode is None: 
+          if self.imageNode is None: 
             print('Please select an US volume')
-          if self.TransformSelector.currentNode() is None:
+          if self.trandformNode is None:
             print('Please select the tip to probe transform')
         if self.imageNode is not None and self.transformNode is not None:
           if self.fiducialNode is not None: 
@@ -347,7 +347,7 @@ class GuidedUSCalWidget(ScriptedLoadableModuleWidget):
         # Adds this node to the scene, not there is no need for self here as it is its own node
         slicer.mrmlScene.AddNode(self.connectorNode)
         # Configures the connector
-        self.connectorNode.SetTypeClient('129.100.44.14', 18944)
+        self.connectorNode.SetTypeClient(self.inputIPLineEdit.text, int(self.inputPortLineEdit.text))
         self.connectorNode.Start()
     else:
       if self.connectorNode.GetState() == 2:
@@ -356,9 +356,9 @@ class GuidedUSCalWidget(ScriptedLoadableModuleWidget):
         self.connectButton.text = "Connect"
         self.freezeButton.text = "Unfreeze" 
         if self.imageSelector.currentNode() or self.TransformSelector.currentNode() is None: 
-          if self.imageSelector.currentNode() is None: 
+          if self.imageNode is None: 
             print('Please select an US volume')
-          if self.TransformSelector.currentNode() is None:
+          if self.transformNode is None:
             print('Please select the tip to probe transform')
         if self.imageNode is not None and self.transformNode is not None:
           self.numFid = self.numFid + 1 
@@ -379,10 +379,10 @@ class GuidedUSCalWidget(ScriptedLoadableModuleWidget):
   def onFiducialClicked(self):
     if self.fiducialNode is not None: 
       self.fiducialNode.RemoveAllMarkups()
-    if self.imageSelector.currentNode() or self.TransformSelector.currentNode() is None: 
-      if self.imageSelector.currentNode() is None: 
+    if self.imageNode or self.transformNode is None: 
+      if self.imageNode is None: 
         print('Please select an US volume')
-      if self.TransformSelector.currentNode() is None:
+      if self.transformNode is None:
         print('Please select the tip to probe transform')
     if self.imageNode is not None and self.transformNode is not None:
       self.numFid = self.numFid+1 
@@ -415,7 +415,7 @@ class GuidedUSCalWidget(ScriptedLoadableModuleWidget):
     # Collect the point in image space
     self.fiducialNode.GetMarkupPoint(self.fiducialNode.GetNumberOfMarkups()-1, 0, centroid)
     tipToProbeTransform = vtk.vtkMatrix4x4()
-    self.TransformSelector.currentNode().GetMatrixTransformToWorld(tipToProbeTransform)
+    self.transformNode.GetMatrixTransformToWorld(tipToProbeTransform)
     origin = [tipToProbeTransform.GetElement(0, 3), tipToProbeTransform.GetElement(1,3), tipToProbeTransform.GetElement(2,3)]
     dir = [tipToProbeTransform.GetElement(0, 2), tipToProbeTransform.GetElement(1,2), tipToProbeTransform.GetElement(2,2)]
     self.logic.AddPointAndLineMan([centroid[0],centroid[1],0], origin, dir)
@@ -460,7 +460,7 @@ class GuidedUSCalWidget(ScriptedLoadableModuleWidget):
       self.imageNode.GetDisplayNode().SetWindowLevelMinMax(0,120)
       slicer.app.layoutManager().sliceWidget('Red').sliceLogic().GetSliceCompositeNode().SetBackgroundVolumeID(self.imageSelector.currentNode().GetID())
       # Configure volume reslice driver, transverse
-      self.resliceLogic.SetDriverForSlice(self.imageSelector.currentNode().GetID(), slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeRed'))
+      self.resliceLogic.SetDriverForSlice(self.imageNode.GetID(), slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeRed'))
       self.resliceLogic.SetModeForSlice(self.resliceLogic.MODE_TRANSVERSE, slicer.mrmlScene.GetNodeByID('vtkMRMLSliceNodeRed'))
       slicer.app.layoutManager().sliceWidget("Red").sliceController().fitSliceToBackground()
 
@@ -472,7 +472,7 @@ class GuidedUSCalWidget(ScriptedLoadableModuleWidget):
     if self.transformNode is None:
       print('Please select a tip to probe transform')
     else:
-      self.needleModel.SetAndObserveTransformNodeID(self.TransformSelector.currentNode().GetID()) 
+      self.needleModel.SetAndObserveTransformNodeID(self.transformNode.GetID()) 
     
   def onInputChanged(self, string):
     if slicer.mrmlScene.GetNodesByClass("vtkMRMLSequenceNode").GetNumberOfItems() == 0:
@@ -480,7 +480,7 @@ class GuidedUSCalWidget(ScriptedLoadableModuleWidget):
         self.connectButton.enabled = True
         self.freezeButton.enabled = True
         if self.connectorNode is not None:
-          self.connectorNode.SetTypeClient('129.100.44.14', 18944)
+          self.connectorNode.SetTypeClient(self.inputIPLineEdit.text, int(self.inputPortLineEdit.text))
       else:
         self.connectButton.enabled = True
       
@@ -501,7 +501,7 @@ class GuidedUSCalWidget(ScriptedLoadableModuleWidget):
   def onRecordButtonClicked(self):
     if self.connectCheck == 0:
       if self.sequenceBrowserNode is None:
-        if self.imageSelector.currentNode is None: 
+        if self.imageNode is None: 
           print('Please select an US volume')
         else:
           slicer.modules.sequencebrowser.setToolBarVisible(1)
@@ -514,10 +514,10 @@ class GuidedUSCalWidget(ScriptedLoadableModuleWidget):
           self.modifyFlag = self.sequenceBrowserNode.StartModify()
           self.sequenceNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLSequenceNode")
           self.sequenceNode2 = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLSequenceNode")
-          self.sequenceBrowserNode.AddProxyNode(self.TransformSelector.currentNode(), self.sequenceNode)
-          self.sequenceBrowserNode.AddProxyNode(self.imageSelector.currentNode(), self.sequenceNode2)
-          self.sequenceBrowserLogic.AddSynchronizedNode(self.sequenceNode, self.TransformSelector.currentNode(), self.sequenceBrowserNode)
-          self.sequenceBrowserLogic.AddSynchronizedNode(self.sequenceNode2, self.imageSelector.currentNode(), self.sequenceBrowserNode)
+          self.sequenceBrowserNode.AddProxyNode(self.transformNode, self.sequenceNode)
+          self.sequenceBrowserNode.AddProxyNode(self.imageNode self.sequenceNode2)
+          self.sequenceBrowserLogic.AddSynchronizedNode(self.sequenceNode, self.transformNode, self.sequenceBrowserNode)
+          self.sequenceBrowserLogic.AddSynchronizedNode(self.sequenceNode2, self.imageNode, self.sequenceBrowserNode)
           self.sequenceBrowserNode.EndModify(self.modifyFlag)
           self.RecordButton.text = "Recording"
           self.StopRecordButton.setEnabled(True)
@@ -551,8 +551,8 @@ class GuidedUSCalWidget(ScriptedLoadableModuleWidget):
       print('Files saved')
       self.filePath = str(self.pathInput.text)
       slicer.util.saveScene(self.filePath+'/SlicerSceneUSCalibration.mrml')
-      slicer.util.saveNode(self.imageSelector.currentNode(), str(self.pathInput.text)+'/Image_Probe.nrrd')
-      slicer.util.saveNode(self.TransformSelector.currentNode(),str(self.pathInput.text)+'/NeedleTipToProbe.h5')
+      slicer.util.saveNode(self.imageNode, str(self.pathInput.text)+'/Image_Probe.nrrd')
+      slicer.util.saveNode(self.transformNode,str(self.pathInput.text)+'/NeedleTipToProbe.h5')
       slicer.util.saveNode(self.sequenceNode, str(self.pathInput.text)+'/Sequence.seq.mha')
       slicer.util.saveNode(self.sequenceNode2, str(self.pathInput.text)+'/Sequence_1.seq.nrrd')
   def cleanup(self):
@@ -584,10 +584,10 @@ class GuidedUSCalWidget(ScriptedLoadableModuleWidget):
       slicer.app.layoutManager().sliceWidget('Red').sliceLogic().GetSliceNode().SetSliceVisible(True)
       slicer.app.layoutManager().setLayout(slicer.vtkMRMLLayoutNode.SlicerLayoutOneUp3DView)
       self.visualizeButton.text = 'Show ultrasound stream'
-      if self.imageSelector.currentNode is None: 
+      if self.needleNode is None: 
           print('Please select an US volume')
       else:
-        self.imageSelector.currentNode().SetAndObserveTransformNodeID(self.manualOutputRegistrationTransformNode.GetID())
+        self.imageNode.SetAndObserveTransformNodeID(self.manualOutputRegistrationTransformNode.GetID())
         self.manualOutputRegistrationTransformNode.SetMatrixTransformToParent(self.ImageToProbeMan)
 
   def onResetButtonClicked(self):
@@ -621,6 +621,8 @@ class GuidedUSCalWidget(ScriptedLoadableModuleWidget):
     self.freezeButton.enabled = True 
     self.freezeButton.text = "Place fiducial"
     self.connectButton.enabled = True 
+
+
 
 class GuidedUSCalLogic(ScriptedLoadableModuleLogic):
   def __init__(self):
